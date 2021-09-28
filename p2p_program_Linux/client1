@@ -1,0 +1,295 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
+
+#define SERV_IP "220.149.128.100"
+#define SERV_PORT 4202
+#define P2P_PORT 4201
+
+#define EXIT "[EXIT]"
+#define P2PFILE "[FILE]"
+
+#define recvfile1 "[user1] : [FILE]\n"
+#define recvfile2 "[user2] : [FILE]\n"
+
+#define MAX_SOCK 5
+
+int main()
+{
+	int sockfd;
+    struct sockaddr_in dest_addr;
+
+  	int check;  
+	int rcv_byte;
+	char buf[512];
+	char id[20];
+	char pw[20];
+	char msg[512];
+    char line[512];
+
+	int maxfdp1;
+
+	fd_set read_fds;
+
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd == -1)
+	{
+		perror("Client-socket() error lol! \n");
+		exit(1);
+	}
+	else printf("Client-socket() sockfd is OK...\n");
+
+	dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(SERV_PORT);
+	dest_addr.sin_addr.s_addr = inet_addr(SERV_IP);
+	memset(&(dest_addr.sin_zero), 0, 8);
+
+	if(connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr)) == -1)
+	{
+		perror("Client-connect() error lol! \n");
+		exit(1);
+	}
+	else printf("Client-connect() is OK...\n\n");
+
+	rcv_byte = recv(sockfd, buf, sizeof(buf), 0);
+	printf("%s\n", buf);
+    
+	printf("ID : ");
+	scanf("%[^\n]",id);
+	buf[0] = '\0';
+	while(getchar() != '\n');
+	send(sockfd, id, strlen(id)+1,0);
+
+	rcv_byte = recv(sockfd, buf, sizeof(buf),0);
+	if((check = strcmp(buf, "PW : ")) == 0)
+	{
+		printf("%s", buf);
+		buf[0] = '\0';
+		scanf("%[^\n]", pw);
+		while(getchar() != '\n');
+		send(sockfd, pw, 20, 0);
+
+		rcv_byte = recv(sockfd, msg, sizeof(buf), 0);
+		printf("%s\n", msg);
+	}
+
+	else
+	{
+		printf("%s\n",buf);
+	}
+
+	maxfdp1 = sockfd + 1;
+
+	while (1) 
+	{	
+		FD_ZERO(&read_fds);
+		FD_SET(0, &read_fds);
+		FD_SET(sockfd, &read_fds);
+
+		if (select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
+		{
+			printf("Select error lol! \n");
+			exit(0);
+		}
+	    
+		if (FD_ISSET(0, &read_fds))
+		{
+			if(fgets(msg, sizeof(buf), stdin))
+			{
+			    sprintf(line, "[%s] : %s", id, msg);
+
+				if (send(sockfd, line, strlen(line), 0) == -1)
+				{
+					perror("Error : Write error on socket. \n");
+					exit(1);
+				}
+
+				if (strstr(msg, EXIT) != NULL)
+				{
+					printf("Good bye! See you next time!\n");
+					close(sockfd);
+					exit(1);
+				}
+
+				if (strstr(msg, P2PFILE) != NULL)
+				{
+					sleep(1);
+
+					int PP_newfd;
+					struct sockaddr_in sock_addr;
+                    FILE *fp2;
+
+					char buf2[512];
+					char select1[10];
+
+					PP_newfd = socket(PF_INET, SOCK_STREAM, 0);
+					if (PP_newfd == -1)
+					{
+						perror("P2P-socket() error lol!");
+						exit(1);
+					}
+
+					memset(&sock_addr, 0, sizeof(sock_addr));
+					sock_addr.sin_family = AF_INET;
+					sock_addr.sin_addr.s_addr = inet_addr("220.149.128.102");
+					sock_addr.sin_port = htons(P2P_PORT);
+
+					if (connect(PP_newfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) == -1)
+					{
+						perror("P2P-connect() error lol!");
+						exit(1);
+					}
+
+					int buf3;
+
+					printf("1.a2.txt\n2.b2.txt\n3.c2.txt\n4.d2.txt\n");
+					printf("Select file number. :");
+					scanf("%s", select1);
+
+					send(PP_newfd, select1, strlen(select1) + 1, 0);
+					
+					buf3 = recv(PP_newfd, buf2, strlen(buf2) + 1, 0);
+					buf2[buf3] = '\0';
+
+					if ((strcmp(select1, "1") == 0)) {
+						fp2 = fopen("a2.txt", "a");
+					}
+
+					else if ((strcmp(select1, "2") == 0)) {
+						fp2 = fopen("b2.txt", "a");
+					}
+
+					else if ((strcmp(select1, "3") == 0)) {
+						fp2 = fopen("c2.txt", "a");
+					}
+
+					else if ((strcmp(select1, "4") == 0)) {
+						fp2 = fopen("d2.txt", "a");
+					}
+
+					else
+					{
+						printf("Wrong number!");
+						exit(1);
+					}
+
+					fprintf(fp2, "%s", buf2);
+					printf("Download complete!\n");
+
+					fclose(fp2);
+					close(PP_newfd);
+				}
+			}
+		}
+
+		if (FD_ISSET(sockfd, &read_fds))
+		{
+			int buf1;
+
+			buf1 = recv(sockfd, msg, sizeof(buf),0);
+			msg[buf1] = '\0';
+			printf("%s", msg);
+
+		    if ((strstr(msg, recvfile1) != NULL) || (strstr(msg, recvfile2) != NULL))
+			{	
+				int P_sockfd;
+				int P_newfd;
+				int P_size;
+
+				struct sockaddr_in sock_addr;
+				struct sockaddr_in new_addr;
+
+				FILE *fp3;
+
+				char text[512];
+				char buf4[512];
+				char select2[10];
+
+				P_sockfd = socket(PF_INET, SOCK_STREAM, 0);
+				if (P_sockfd == -1)
+				{
+					perror("P2P-socket() error lol!");
+					exit(1);
+				}
+
+				memset(&sock_addr, 0, sizeof(sock_addr));
+				sock_addr.sin_family = AF_INET;
+				sock_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+				sock_addr.sin_port = htons(P2P_PORT);
+
+				if (bind(P_sockfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) == -1)
+				{
+					perror("P2P-bind() error lol!");
+					exit(1);
+				}
+
+				if (listen(P_sockfd, 10) == -1)
+				{
+					perror("P2P-listen error lol!");
+					exit(1);
+				}
+
+				memset(buf4, 0, 512);
+				P_size = sizeof(new_addr);
+				P_newfd = accept(P_sockfd, (struct sockaddr*)&new_addr, &P_size);
+
+				if(P_newfd == -1)
+				{
+					perror("accept() error lol!");
+					exit(1);
+				}
+
+				int buf2;
+				buf2 = recv(P_newfd, select2, strlen(select2) + 1, 0);
+				select2[buf2] = '\0';
+
+				printf("Received number: %s\n", select2);
+				memset(buf4, 0, 512);
+
+				if ((strcmp(select2, "1") == 0)) {
+					fp3 = fopen("a1.txt", "rt");
+				}
+
+				else if ((strcmp(select2, "2") == 0)) {
+					fp3 = fopen("b1.txt", "rt");
+				}
+
+				else if ((strcmp(select2, "3") == 0)) {
+					fp3 = fopen("c1.txt", "rt");
+				}
+
+				else if ((strcmp(select2, "4") == 0)) {
+					fp3 = fopen("d1.txt", "rt");
+				}
+
+				else
+				{
+					printf("Wrong number!");
+					exit(1);
+				}
+
+				if (fp3 == NULL) 
+				{
+					perror("file-open() error lol!");
+					exit(1);
+				}
+			
+				fgets(text, sizeof(text), fp3);
+				puts(text);
+				strcpy(buf4, text);
+				send(P_newfd, buf4, strlen(buf4) + 1, 0);
+
+				fclose(fp3);
+
+				close(P_newfd);
+				close(P_sockfd);
+			}
+		}
+	}
+}
