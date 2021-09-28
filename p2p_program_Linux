@@ -1,1 +1,217 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
 
+#define SERV_IP "220.149.128.100"
+#define SERV_PORT 4202
+#define BACKLOG 10
+
+#define INIT_MSG "==============================\nHello! I'm Chatting Server...\nPlease, LOG-IN!\n==============================\n"
+#define USER1_ID "user1"
+#define USER1_PW "passwd1"
+#define USER2_ID "user2"
+#define USER2_PW "passwd2"
+
+#define MAX_SOCK 5
+
+#define EXIT "[EXIT]"
+
+int GetMax(int);
+
+int client_s[MAX_SOCK];
+int num = 0;
+
+int main(void)
+{
+	int sockfd, new_fd;
+    struct sockaddr_in my_addr;
+	struct sockaddr_in their_addr;
+	unsigned sin_size;
+
+	int rcv_byte;
+	int val = 1;
+	char buf[512];
+	char id[20];
+	char pw[20];
+	char msg[512];
+
+	int maxfdp1;
+	int i, j, n;
+
+	fd_set read_fds;
+
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd == -1)
+	{
+		perror("Server-socket() error lol!");
+		exit(1);
+	}
+	else printf("Server-socket() sockfd is OK...\n");
+	
+	my_addr.sin_family = AF_INET;
+	my_addr.sin_port = htons(SERV_PORT);
+	my_addr.sin_addr.s_addr = INADDR_ANY;
+	memset(&(my_addr.sin_zero), 0, 8);
+
+	if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == -1)
+	{
+		perror("Server-bind() error lol!");
+		exit(1);
+	}
+	else printf("Server-bind() is OK...\n");
+
+	if (listen(sockfd, BACKLOG) == -1)
+	{
+		perror("listen() error lol!");
+		exit(1);
+	}
+	else printf("listen() is OK...\n\n");
+
+	maxfdp1 = sockfd + 1;
+
+	printf("==============================\nHello! I'm Chatting Server...\nPlease, LOG-IN!\n==============================\n");
+
+	while(1)
+	{
+		msg[0] = '\0';
+		buf[0] = '\0';
+
+		FD_ZERO(&read_fds);
+		FD_SET(sockfd, &read_fds);
+		FD_SET(0, &read_fds);
+
+		for(i=0; i<num; i++) FD_SET(client_s[i], &read_fds);
+		maxfdp1 = GetMax(sockfd) + 1;
+
+		if (select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, NULL) == -1)
+		{
+			printf("Server-select() error lol!");
+			exit(1);
+		}
+
+		if (FD_ISSET(sockfd, &read_fds))
+		{
+			sin_size = sizeof(struct sockaddr_in);
+			new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+
+			if (new_fd == -1)
+			{
+				printf("accept() error lol!");
+				exit(1);
+			}
+			else printf("accept() is OK...\n\n");
+
+			send(new_fd, INIT_MSG, strlen(INIT_MSG) + 1, 0);
+			rcv_byte = recv(new_fd, id, sizeof(buf), 0);
+
+			if((strcmp(id, USER1_ID)) == 0)
+			{
+				send(new_fd, "PW : ", sizeof(pw), 0);
+				rcv_byte = recv(new_fd, pw, sizeof(buf), 0);
+
+				if ((strcmp(pw, USER1_PW)) == 0)
+				{
+					send(new_fd, "Log-in success! - Welcome to GTalk\n==================== Chatting Room ====================\n(Write [EXIT] if you want to exit. / Write [FILE] if you want to download the file.)\n", sizeof(msg), 0);
+					printf("Log-in success! [user1] - Welcome to GTalk\n==================== Chatting Room ====================\n");
+				}
+
+				else
+				{
+					send(new_fd, "PW error!\n==========\n", sizeof(msg), 0);
+					printf("PW error!\n==========\n");
+				}
+			}
+
+			else if((strcmp(id, USER2_ID)) == 0)
+			{
+				send(new_fd, "PW : ", sizeof(pw), 0);
+				rcv_byte = recv(new_fd, pw, sizeof(buf), 0);
+
+				if ((strcmp(pw, USER2_PW)) == 0)
+				{
+					send(new_fd, "Log-in success! - Welcome to GTalk\n==================== Chatting Room ====================\n(Write [EXIT] if you want to exit. / Write [FILE] if you want to download the file.)\n", sizeof(msg), 0);
+					printf("Log-in success! [user2] - Welcome to GTalk\n==================== Chatting Room ====================\n");
+				}
+
+				else
+				{
+					send(new_fd, "PW error!\n==========\n", sizeof(msg), 0);
+					printf("PW error!\n==========\n");
+				}
+			}
+
+			else
+			{
+				send(new_fd, "ID error!\n==========\n", sizeof(msg), 0);
+				printf("ID error!\n==========\n");
+			}
+
+			client_s[num] = new_fd;
+
+			getsockname(new_fd, (struct sockaddr *)&their_addr, &sin_size);
+
+			num++;
+		}
+
+		for(i=0; i<num; i++)
+		{
+			if (FD_ISSET(client_s[i], &read_fds))
+			{
+				if ((n = recv(client_s[i], buf, sizeof(buf), 0)) <= 0)
+				{
+					close(client_s[i]);
+
+					if(i != num - 1)
+					{
+						client_s[i] = client_s[num - 1];
+					}
+
+					num--;
+
+					continue;
+				}
+
+				buf[n] = '\0';
+
+		        if (strstr(buf, EXIT) != NULL)
+				{
+					close(client_s[i]);
+
+					if (i != num - 1)
+					{
+						client_s[i] = client_s[num - 1];
+					}
+
+					num--;
+				}
+				
+				for(j = 0; j < num; j++)
+				{
+					if (i != j)
+					send(client_s[j], buf, n, 0);
+				}
+
+				printf("%s", buf);
+			}
+		}
+	}
+}
+
+int GetMax(int i)
+{
+	int max = i;
+	int j;
+
+	for(j = 0; j<num; j++)
+	{
+		if(client_s[j] > max) max = client_s[j];
+	}
+
+	return max;
+}
