@@ -11,4 +11,4 @@ m2 버튼을 누르면 3개의 알람 시간을 설정할 수 있습니다. 또�
 이 프로그램을 하면서 채터링과 LCD 사용법을 배웠습니다.
 
 
-<img src = "https://user-images.githubusercontent.com/66273924/155520450-3c1cc538-d917-4eaf-a41c-9e75d957019c.png" width="200" height="400"/>
+<img src = "https://user-images.githubusercontent.com/66273924/155520450-3c1cc538-d917-4eaf-a41c-9e75d957019c.png"/>
