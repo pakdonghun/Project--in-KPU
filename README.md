@@ -20,5 +20,5 @@ Achro보드와 안드로이드 어플을 연동하여 동작
 # 6. Handtalker
 안드로이드와 아두이노센서들을 활용하여 수화번역장갑을 만듦
 
-# 7.Alram_clock
+# 7. Alram_clock
 Codevision AVR 이용하여 알람시계 코드 빌드를 하고 타켓보드(ATMEGA128)에 라이팅하여 만듦
