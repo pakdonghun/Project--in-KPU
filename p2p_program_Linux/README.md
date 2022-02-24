@@ -8,5 +8,6 @@ Flag를 이용한 접근 제어 방식과 공유 메모리 사용 방식 학습.
 
 원격 접속 터미널인 Putty사용.
 
+자세한 내용 pdf 참조
 
-[P2P프로그램](https://github.com/pakdonghun/Project--in-KPU/blob/main/p2p_program_Linux/Final%20Project.pdf)
+[P2P프로그램.pdf](https://github.com/pakdonghun/Project--in-KPU/blob/main/p2p_program_Linux/Final%20Project.pdf)
